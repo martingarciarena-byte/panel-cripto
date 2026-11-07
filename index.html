@@ -1,0 +1,962 @@
+<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="robots" content="noindex, nofollow"><title>Divergencias MACD BTC ETH</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:wght@400;500&display=swap">
+<style>
+/* Mesa de análisis: una franja de controles arriba y los gráficos apilados como paneles de una terminal,
+   4 horas primero (donde viven las divergencias) y el diario debajo como contexto. */
+:root {
+  --bg: #f3f5f7;
+  --panel: #ffffff;
+  --fg: #16202a;
+  --muted: #5d6b78;
+  --line: #d9dfe5;
+  --grid: #eef1f4;
+  --up: #12855f;
+  --down: #c6383b;
+  --hist-up: #2fa4a0;
+  --hist-up-weak: #a8d9d6;
+  --hist-dn: #e0575a;
+  --hist-dn-weak: #f2b9ba;
+  --macd: #2563c9;
+  --signal: #d98a12;
+  --ema10: #7a4fd0;
+  --ema55: #d98a12;
+  --reg: #c2410c;
+  --ocu: #2563c9;
+  --exa: #7a4fd0;
+  --win: #12855f;
+  --loss: #c6383b;
+  --chip: #e7ecf1;
+  --adx: #16202a;
+  --dip: #12855f;
+  --dim: #c6383b;
+  --cruz: #5d6b78;
+  --abierta: #0b72b9;
+  --font-display: "IBM Plex Sans Condensed", "Arial Narrow", system-ui, sans-serif;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-data: "IBM Plex Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0d1217; --panel: #131a21; --fg: #e3e9ef; --muted: #8d9aa7; --line: #25303b; --grid: #1a232c;
+    --up: #2fbf8a; --down: #f0676a; --hist-up: #3fb8b3; --hist-up-weak: #1f5c5a; --hist-dn: #f0676a; --hist-dn-weak: #6b2f31;
+    --macd: #5b93f0; --signal: #f0a53a; --ema10: #a585f0; --ema55: #f0a53a;
+    --reg: #f08a4b; --ocu: #5b93f0; --exa: #a585f0; --ago: #e0b13c; --win: #2fbf8a; --loss: #f0676a; --chip: #1c252e;
+    --adx: #e3e9ef; --dip: #2fbf8a; --dim: #f0676a; --cruz: #8d9aa7; --abierta: #4cb3f5;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0d1217; --panel: #131a21; --fg: #e3e9ef; --muted: #8d9aa7; --line: #25303b; --grid: #1a232c;
+  --up: #2fbf8a; --down: #f0676a; --hist-up: #3fb8b3; --hist-up-weak: #1f5c5a; --hist-dn: #f0676a; --hist-dn-weak: #6b2f31;
+  --macd: #5b93f0; --signal: #f0a53a; --ema10: #a585f0; --ema55: #f0a53a;
+  --reg: #f08a4b; --ocu: #5b93f0; --exa: #a585f0; --ago: #e0b13c; --win: #2fbf8a; --loss: #f0676a; --chip: #1c252e;
+  --adx: #e3e9ef; --dip: #2fbf8a; --dim: #f0676a; --cruz: #8d9aa7; --abierta: #4cb3f5;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; line-height: 1.5;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 40px;
+}
+.pagina { max-width: 1280px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 24px; }
+h1 { font-family: var(--font-display); font-weight: 600; font-size: 1.75rem; line-height: 1.1; margin: 0; letter-spacing: 0.01em; text-wrap: balance; }
+.sub { color: var(--muted); margin: 4px 0 0; font-size: 0.875rem; }
+.controles { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
+.segmento { display: inline-flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--panel); }
+.segmento button {
+  font: 600 0.9rem var(--font-display); letter-spacing: 0.04em; padding: 6px 16px; border: 0; background: transparent;
+  color: var(--muted); cursor: pointer;
+}
+.segmento button[aria-pressed="true"] { background: var(--fg); color: var(--panel); }
+.segmento button:focus-visible, .chip:focus-within { outline: 2px solid var(--macd); outline-offset: 2px; }
+.chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; background: var(--chip);
+  font-size: 0.8125rem; cursor: pointer; user-select: none;
+}
+.chip input { margin: 0; accent-color: var(--fg); }
+.tip {
+  position: absolute; z-index: 5; pointer-events: none; min-width: 230px; max-width: 300px; padding: 8px 10px;
+  background: var(--panel); border: 1px solid var(--line); border-radius: 6px; box-shadow: 0 4px 14px rgb(0 0 0 / 0.18);
+  font-size: 0.75rem; line-height: 1.45;
+}
+.tip h3 { font: 600 0.8125rem var(--font-display); letter-spacing: 0.02em; margin: 0 0 2px; }
+.tip .cuando { color: var(--muted); font-family: var(--font-data); font-size: 0.6875rem; margin-bottom: 5px; }
+.tip ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.tip li { display: grid; grid-template-columns: 14px 1fr; gap: 4px; font-variant-numeric: tabular-nums; }
+.tip .si { color: var(--win); } .tip .no { color: var(--loss); } .tip .na { color: var(--muted); }
+.tip .final { margin-top: 6px; padding-top: 5px; border-top: 1px solid var(--line); font-weight: 500; }
+.tip + .tip { margin-top: 6px; }
+.tip-caja { position: absolute; z-index: 5; pointer-events: none; }
+.tip-caja .tip { position: static; }
+.reglas-celda { font-family: var(--font-data); font-size: 0.75rem; }
+.reglas-celda .si { color: var(--win); } .reglas-celda .no { color: var(--loss); }
+.boton {
+  font: 500 0.8125rem var(--font-body); padding: 4px 12px; border-radius: 999px; border: 1px solid var(--line);
+  background: var(--panel); color: var(--fg); cursor: pointer;
+}
+.boton[aria-pressed="true"] { background: var(--fg); color: var(--panel); border-color: var(--fg); }
+.boton:focus-visible { outline: 2px solid var(--macd); outline-offset: 2px; }
+.lectura { font-family: var(--font-data); font-size: 0.8125rem; color: var(--muted); font-variant-numeric: tabular-nums; }
+.lectura b { color: var(--fg); font-weight: 500; }
+.grafico.midiendo { cursor: crosshair; }
+.punto { width: 10px; height: 10px; border-radius: 50%; display: inline-block; }
+.resumen { display: flex; flex-wrap: wrap; gap: 8px 28px; font-family: var(--font-data); font-size: 0.8125rem; color: var(--muted); }
+.resumen b { color: var(--fg); font-weight: 500; font-variant-numeric: tabular-nums; }
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 12px 12px 8px; display: grid; gap: 6px; min-width: 0; }
+.panel-cab { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 16px; }
+.panel h2 { font-family: var(--font-display); font-weight: 600; font-size: 1.05rem; margin: 0; letter-spacing: 0.02em; text-transform: uppercase; }
+.leyenda { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 0.75rem; color: var(--muted); }
+.leyenda span { display: inline-flex; align-items: center; gap: 5px; }
+.raya { width: 14px; height: 2px; display: inline-block; }
+.grafico { position: relative; width: 100%; }
+.grafico canvas.capa { position: absolute; left: 0; top: 0; pointer-events: none; z-index: 3; }
+.g-precio { height: 400px; }
+.g-osc { height: 150px; }
+.g-precio-d { height: 300px; }
+.g-osc-d { height: 120px; }
+.etiqueta { font: 500 0.6875rem var(--font-data); color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; margin: 2px 0 -2px; }
+.tabla-caja { overflow-x: auto; }
+.filtros { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 0 0 10px; }
+.filtros label { display: inline-flex; align-items: center; gap: 4px; color: var(--muted); font-size: 12px; }
+.filtros select { background: var(--chip); color: var(--fg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; font: inherit; }
+table { border-collapse: collapse; width: 100%; font-size: 0.8125rem; font-variant-numeric: tabular-nums; }
+th { text-align: left; font: 500 0.6875rem var(--font-data); letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); padding: 6px 10px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+td { padding: 6px 10px; border-bottom: 1px solid var(--grid); white-space: nowrap; }
+td.num { font-family: var(--font-data); text-align: right; }
+th.num { text-align: right; }
+.pill { display: inline-block; padding: 1px 8px; border-radius: 999px; font-size: 0.75rem; font-weight: 500; }
+.p-largo { color: var(--up); background: color-mix(in srgb, var(--up) 14%, transparent); }
+.p-corto { color: var(--down); background: color-mix(in srgb, var(--down) 14%, transparent); }
+.p-gana { color: var(--win); }
+.p-pierde { color: var(--loss); }
+.nota { color: var(--muted); font-size: 0.8125rem; max-width: 72ch; margin: 0; }
+.nota code { font-family: var(--font-data); font-size: 0.75rem; }
+@media (max-width: 600px) {
+  .g-precio { height: 300px; } .g-osc { height: 120px; } .g-precio-d { height: 240px; } .g-osc-d { height: 100px; }
+  h1 { font-size: 1.4rem; }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style></head><body>
+
+<div class="pagina">
+  <header>
+    <div>
+      <h1>Divergencias del MACD en 4 horas y 1 hora</h1>
+      <p class="sub" id="sub">BTC y ETH, velas de Binance spot desde agosto de 2017</p>
+    </div>
+    <div class="controles">
+      <div class="segmento" role="group" aria-label="Moneda">
+        <button type="button" id="b-BTC" aria-pressed="true">BTC</button>
+        <button type="button" id="b-ETH" aria-pressed="false">ETH</button>
+        <button type="button" id="b-NKE" aria-pressed="false" title="Perpetuo de BingX sobre la acción de Nike: señales en prueba, sin demo">NKE</button>
+      </div>
+      <div class="segmento" role="group" aria-label="Versión de la estrategia">
+        <button type="button" id="b-v1" aria-pressed="true" title="v1 en 4H: divergencia confirmada en la primera barra que retrocede; 33 % a 2 ATR y trailing; tamaño por RSI de 30 min y EMA200">v1 · 4H</button>
+        <button type="button" id="b-v1h" aria-pressed="false" title="v1 en 1H para BTC y ETH: las mismas reglas una temporalidad abajo, con la tendencia diaria">v1 · 1H</button>
+        <button type="button" id="b-sqz" aria-pressed="false" title="Squeeze en 1H para BTC y ETH: regulares del SQZ MOM por lomos y giro, SL libre a 3 ATR, 50 USDT">SQZ · 1H</button>
+        <button type="button" id="b-rc4" aria-pressed="false" title="Regulares del MACD de 4H contra el diario: SL 2 ATR, TP 3, corte 96 h, trailing 4">Regulares contra · 4H</button>
+        <button type="button" id="b-sc4" aria-pressed="false" title="Regulares del Squeeze de 4H contra el diario: SL 2 ATR, TP 3, corte 96 h">SQZ contra · 4H</button>
+        <button type="button" id="b-rr4" aria-pressed="false" title="Regulares de la v1 4H que caen por el tamaño mínimo: SL 3 ATR, sin TP, corte 96 h">RSI 30m · 4H</button>
+        <button type="button" id="b-oc4" aria-pressed="false" title="Ocultas del MACD de 4H contra el diario: SL 3 ATR, sin TP, corte 96 h">Ocultas contra · 4H</button>
+        <button type="button" id="b-oc1" aria-pressed="false" title="Ocultas del MACD de 1H contra el diario: SL 2 ATR, sin TP, corte 48 h">Ocultas contra · 1H</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="controles" role="group" aria-label="Qué mostrar en el gráfico de la estrategia">
+    <label class="chip"><input type="checkbox" id="f-reg" checked><span class="punto" style="background: var(--reg)"></span>Regulares</label>
+    <label class="chip"><input type="checkbox" id="f-ocu"><span class="punto" style="background: var(--ocu)"></span>Ocultas</label>
+    <label class="chip"><input type="checkbox" id="f-exa"><span class="punto" style="background: var(--exa)"></span>Exageradas</label>
+    <label class="chip" id="chip-ago"><input type="checkbox" id="f-ago" checked><span class="punto" style="background: var(--ago)"></span>Agotamiento</label>
+    <label class="chip"><input type="checkbox" id="f-favor">Solo a favor del diario</label>
+    <label class="chip"><input type="checkbox" id="f-ops" checked>Operaciones de la estrategia</label>
+    <button type="button" class="boton" id="medir" aria-pressed="false" title="Clic en dos velas del gráfico de la estrategia o del diario; Esc borra">Medir %</button>
+    <span class="lectura" id="lectura" aria-live="polite"></span>
+  </div>
+
+  <div class="resumen" id="resumen"></div>
+
+  <section class="panel" aria-label="Gráfico de la estrategia" id="panel-tf">
+    <div class="panel-cab">
+      <h2 id="tf-titulo">4 horas</h2>
+      <div class="leyenda">
+        <span><i class="raya" style="background: var(--reg)"></i>divergencia: precio y MACD</span>
+        <span><i class="raya" style="border-top: 2px dashed var(--win); height: 0"></i>operación ganadora</span>
+        <span><i class="raya" style="border-top: 2px dashed var(--loss); height: 0"></i>perdedora</span>
+        <span><i class="raya" style="background: var(--abierta); height: 3px"></i>abierta (punteado rojo: stop vigente)</span>
+        <span><i class="raya" style="background: color-mix(in srgb, var(--loss) 25%, transparent); height: 8px"></i>hasta el stop inicial</span>
+        <span><i class="raya" style="background: color-mix(in srgb, var(--win) 25%, transparent); height: 8px"></i>hasta el TP parcial</span>
+        <span><b style="color: var(--up)">▲ alcista</b> · <b style="color: var(--down)">▼ bajista</b>: señal en la vela siguiente a la confirmación</span>
+      </div>
+    </div>
+    <div class="grafico g-precio" id="h4-precio"><canvas class="capa"></canvas><div id="tip" class="tip-caja" hidden></div></div>
+    <p class="etiqueta">MACD 12 · 26 · 9 — histograma, línea y señal</p>
+    <div class="grafico g-osc" id="h4-osc"><canvas class="capa"></canvas></div>
+    <p class="etiqueta">SQZ MOM (LazyBear, 20) — histograma</p>
+    <div class="grafico g-osc" id="h4-sqz"><canvas class="capa"></canvas></div>
+    <p class="etiqueta">ADX 14 — <span style="color: var(--adx)">ADX</span> · <span style="color: var(--dip)">DI+</span> · <span style="color: var(--dim)">DI−</span></p>
+    <div class="grafico g-osc" id="h4-adx"></div>
+  </section>
+
+  <section class="panel" aria-label="Gráfico diario">
+    <div class="panel-cab">
+      <h2>Diario</h2>
+      <div class="leyenda">
+        <span><i class="raya" style="background: var(--ema10)"></i>EMA 10</span>
+        <span><i class="raya" style="background: var(--ema55)"></i>EMA 55</span>
+        <span>tendencia: EMA 10 sobre o bajo la EMA 55</span>
+      </div>
+    </div>
+    <div class="filtros" id="fil-diario">
+      <label class="chip"><input type="checkbox" id="d-reg" checked><span class="punto" style="background: var(--reg)"></span>Regulares</label>
+      <label class="chip"><input type="checkbox" id="d-ocu"><span class="punto" style="background: var(--ocu)"></span>Ocultas</label>
+      <label class="chip"><input type="checkbox" id="d-exa"><span class="punto" style="background: var(--exa)"></span>Exageradas</label>
+      <label class="chip"><input type="checkbox" id="d-macd" checked>MACD</label>
+      <label class="chip"><input type="checkbox" id="d-sqz-f" checked>SQZ MOM</label>
+      <label class="chip"><input type="checkbox" id="d-may" checked>Pivotes mayores</label>
+      <label class="chip"><input type="checkbox" id="d-otr" checked>Otros detectores</label>
+    </div>
+    <div class="grafico g-precio-d" id="d-precio"><canvas class="capa"></canvas></div>
+    <p class="etiqueta">MACD 12 · 26 · 9</p>
+    <div class="grafico g-osc-d" id="d-osc"><canvas class="capa"></canvas></div>
+    <p class="etiqueta">SQZ MOM</p>
+    <div class="grafico g-osc-d" id="d-sqz"><canvas class="capa"></canvas></div>
+  </section>
+
+  <section class="panel" aria-label="Divergencias diarias">
+    <div class="panel-cab"><h2 id="dd-titulo">Divergencias diarias</h2><span class="leyenda">se muestran para revisarlas, no se operan; clic en una fila para ir al gráfico; línea punteada: solo por pivotes mayores</span></div>
+    <div class="tabla-caja" style="max-height: 420px; overflow-y: auto">
+      <table>
+        <thead><tr><th>Señal</th><th>Entrada</th><th>Indicador</th><th>Tipo</th><th>Lado</th><th>A</th><th class="num">Precio A → B</th><th>B</th><th class="num">Oscilador A → B</th><th>Semanal</th><th>Detectores</th></tr></thead>
+        <tbody id="tabla-dd"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Posiciones abiertas">
+    <div class="panel-cab"><h2 id="abiertas-titulo">Posiciones abiertas</h2><span class="leyenda" id="abiertas-leyenda"></span></div>
+    <div class="filtros" id="fil-abiertas"></div>
+    <div class="tabla-caja">
+      <table>
+        <thead><tr><th>Estrategia</th><th>Moneda</th><th>Lado</th><th>Entrada</th><th class="num">Nocional</th><th class="num">Precio de entrada</th><th class="num">Último precio</th><th class="num">SL inicial</th><th class="num">SL vigente</th><th class="num">Distancia al SL</th><th class="num">TP</th><th>Duración</th><th class="num">Funding</th><th class="num">PnL sin cerrar</th><th class="num">ROI</th></tr></thead>
+        <tbody id="tabla-abiertas"></tbody>
+      </table>
+    </div>
+    <div id="registros"></div>
+  </section>
+
+  <section class="panel" aria-label="Divergencias que no se operan">
+    <div class="panel-cab"><h2 id="nops-titulo">Divergencias de 1H que no se operan</h2><span class="leyenda">regulares y exageradas del MACD y del SQZ MOM, en GMT-3: entrada en la apertura siguiente, SL a 3 ATR y TP de referencia a 4 ATR de 1H. La v1 de 1H cierra 25 % a 1,5 ATR; el SQZ no usa TP</span></div>
+    <div class="filtros" id="fil-nops"></div>
+    <div class="tabla-caja" style="max-height: 340px; overflow-y: auto">
+      <table>
+        <thead><tr><th>Señal</th><th>Moneda</th><th>Indicador</th><th>Tipo</th><th>Lado</th><th class="num">Entrada</th><th class="num">SL</th><th class="num">TP ref.</th><th>Por qué no se opera</th></tr></thead>
+        <tbody id="tabla-nops"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Últimas divergencias">
+    <div class="panel-cab"><h2 id="tabla-titulo">Últimas divergencias en 4 horas</h2><span class="leyenda">horas en GMT-3; la señal es la apertura de la vela siguiente a la que confirma la divergencia</span></div>
+    <div class="tabla-caja">
+      <table>
+        <thead><tr><th>Señal</th><th>Tipo</th><th>Lado</th><th class="num">Precio A → B</th><th class="num">Histograma A → B</th><th>Diario</th><th>Reglas</th><th>Estrategia</th></tr></thead>
+        <tbody id="tabla"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="panel" aria-label="Operaciones de la estrategia">
+    <div class="panel-cab"><h2 id="ops-titulo">Operaciones cerradas</h2><span class="leyenda">v1 de 4H, v1 de 1H y Squeeze en 1H, BTC y ETH, en GMT-3; PnL con comisiones y funding (estimado antes de 2025); clic en una fila para verla en el gráfico (el 1H se ve desde 2025)</span></div>
+    <div class="filtros" id="fil-ops"></div>
+    <div class="tabla-caja" style="max-height: 420px; overflow-y: auto">
+      <table>
+        <thead><tr><th>Estrategia</th><th>Moneda</th><th>Lado</th><th>Entrada</th><th>Salida</th><th class="num">Nocional</th><th class="num">Precio de entrada</th><th class="num">Precio de salida</th><th class="num">SL inicial</th><th class="num">TP</th><th>Motivo</th><th>Duración</th><th class="num">Funding</th><th class="num">PnL</th><th class="num">ROI</th></tr></thead>
+        <tbody id="tabla-ops"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <p class="nota">Divergencias del histograma del MACD por jorobas: cada joroba se compara con la anterior del mismo signo, sin mirar adelante, y la señal se marca en la vela siguiente a la confirmación, que es donde se entra. <b>v1</b>: el extremo nuevo del precio se confirma cuando pasan 3 velas sin superarlo (<code>motor_backtest.divergencias</code>). Regular: el precio hace un extremo nuevo y el MACD no. Oculta: el precio no llega al extremo anterior y el MACD sí lo supera. Exagerada: doble techo o doble piso con el MACD más débil. Operaciones: divergencias regulares a favor del diario, SL 3 ATR y ajuste por los DI de 30 min; el nocional medio ronda los 50 USDT. En la v1 en 4H va de 5 a 140 USDT: base 40, por el RSI de 30 min (×1,75 a favor, ×0,25 en contra) y por la EMA200 (×2 en el retroceso, ×0,5 en contra de las dos). En la v1 en 1H, 100 USDT en el retroceso de la EMA200 y 50 en el resto; no se operan las señales en contra de las dos EMA200 ni las de z ≥ +1 del VWAP semanal. Las señales de menos de 25 USDT se muestran, pero no se operan: se saltean porque no aportan al resultado de la estrategia; en la v1, además, el RSI 14 en espejo tiene que estar por debajo de 45 y el pico del histograma tiene que ser al menos 30 % distinto del anterior, y el ADX 14 diario tiene que ser al menos 20; salida de la v1: 33 % a 2 ATR y el resto con trailing de 4 ATR desde la entrada. <b>v1 · 1H</b>: las mismas reglas en el gráfico de 1 hora (ATR de 1H, RSI ≤ 62, picos entre 9 % y 58 %, ADX diario ≥ 16 en las regulares, 25 % a 1,5 ATR y el resto con SL libre a 3 ATR del cierre, sin el ajuste del stop por los DI de 30 min), solo para BTC y ETH, con la tendencia diaria y operando también las divergencias exageradas; las regulares se detectan por pivotes del precio y del histograma, con cruce por cero obligatorio entre A y B; el gráfico de 1H empieza en enero de 2025. La línea punteada de cada operación va de la entrada a la salida final. <b>SQZ · 1H</b>: divergencias regulares del Squeeze Momentum de LazyBear (20) entre lomos, con un retroceso de al menos 30 % y confirmadas en el giro del histograma, en BTC y ETH; a favor del diario, RSI ≤ 62, picos entre 9 % y 58 %, ADX diario ≥ 16, SL libre a 3 ATR con piso de +1 ATR tras avanzar 4 ATR y 50 USDT; las que coinciden a ±3 velas con la v1 en 1H se muestran, pero no se operan. <b>Reglas de la v1</b>: al pasar el mouse por la flecha de una divergencia aparece qué reglas cumple y cuáles no (a favor del diario, RSI 14 en espejo &lt; 45 en la vela de la señal (&lt; 55 en la v1 en 1H), picos del histograma ≥ 30 % distintos, ADX 14 diario ≥ 20) y si se operó. Solo las regulares que cumplen todas generan operaciones (en la v1 en 1H, también las exageradas), salvo que ya haya 10 abiertas; las ocultas nunca operan.</p>
+</div>
+
+<script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
+<script>
+let DATOS = /*__DATOS__*/null;
+const WEB = DATOS === null;
+// las horas intradía se muestran en GMT-3; el diario queda en su fecha UTC, porque sus velas cierran a las 00:00 UTC (21:00 GMT-3)
+const GMT3 = 10800;
+const vela = (t, per) => t - ((t + GMT3) % per);   // inicio de la vela de `per` segundos que contiene a t, con t ya en GMT-3
+function horaComun(D) {
+  D.hasta -= GMT3;
+  for (const w of TODAS) {
+    for (const v of D[w].divs) for (const i of [2, 4, 6, 8, 10]) v[i] -= GMT3;
+    for (const t of [...D[w].trades, ...(D[w].ant || [])]) { t[0] -= GMT3; t[2] -= GMT3; }
+    for (const x of D[w].descartes || []) x[0] -= GMT3;
+    for (const a of D[w].abiertas || []) { a.t -= GMT3; for (const r of a.reg) r[0] -= GMT3; }
+  }
+}
+function horaSerie(D) { for (const k of ["h4", "h1"]) D[k].t = D[k].t.map(t => t - GMT3); }
+// en la web, los datos viven aparte: lo común primero y las velas de cada moneda cuando hacen falta
+// version.json cambia en cada publicación: los datos se piden con ese número, así nunca sale una copia vieja de la caché
+let VER_WEB = 0;
+const versionWeb = async () => { const r = await fetch(`version.json?t=${Date.now()}`, { cache: "no-store" }); if (!r.ok) throw new Error("version"); return (await r.json()).v; };
+const traerJson = async n => { const r = await fetch(`${n}.json?v=${VER_WEB}`); if (!r.ok) throw new Error(n); return r.json(); };
+async function traerSerie(m) {
+  if (!WEB || DATOS[m].h1) return;
+  const s = await traerJson(m); horaSerie(s); Object.assign(DATOS[m], s);
+}
+const TIPOS = ["regular", "oculta", "exagerada", "agotamiento"];
+// filtros de las tablas: categoría → valor elegido ("" = todas)
+const FIL = { abiertas: {}, nops: {}, ops: {} };
+const pasa = (tabla, fila) => Object.entries(FIL[tabla]).every(([k, v]) => !v || fila[k] === v);
+const catInd = w => w === "sqz" || w === "sc4" ? "SQZ" : "MACD", catTf = w => w === "d1" ? "1D" : es1H(w) ? "1H" : "4H", catLado = s => s > 0 ? "largo" : "corto";
+function barra(tabla, campos, alCambiar) {
+  const caja = document.getElementById("fil-" + tabla);
+  caja.innerHTML = campos.map(([k, nom, ops]) => `<label>${nom} <select data-k="${k}"><option value="">Todas</option>${ops.map(o => `<option value="${o}">${o}</option>`).join("")}</select></label>`).join("");
+  caja.addEventListener("change", e => { FIL[tabla][e.target.dataset.k] = e.target.value; alCambiar(); });
+}
+const MONEDAS = ["BTC", "ETH", "NKE"];
+let moneda = "BTC", version = "v1";
+const VERSIONES = ["v1", "v1h", "sqz", "rc4", "sc4", "rr4", "oc4", "oc1"];
+const TODAS = [...VERSIONES, "d1"];   // d1: compras con divergencias diarias, sin botón propio: sus divergencias están en el panel diario
+const es1H = (v = version) => v === "v1h" || v === "sqz" || v === "oc1";
+// estrategias de rebote: operan con salida propia, corte por tiempo y TP total
+const REB = { rc4: "regulares del MACD de 4H contra el diario, RSI < 45 y pico ≥ 30 %; SL 2 ATR, TP total a 3 ATR, trailing 4 ATR, corte a 96 h, 50 USDT",
+              sc4: "regulares del Squeeze de 4H contra el diario; SL 2 ATR, TP total a 3 ATR, corte a 96 h, 50 USDT",
+              rr4: "regulares de la v1 en 4H que caen por el tamaño mínimo (RSI de 30 min en contra); SL 3 ATR, sin TP, corte a 96 h, 50 USDT",
+              oc4: "ocultas del MACD de 4H contra el diario; SL 3 ATR, sin TP, corte a 96 h, 50 USDT",
+              oc1: "ocultas del MACD de 1H contra el diario; SL 2 ATR, sin TP, corte a 48 h, 50 USDT; gráfico desde enero de 2025" };
+try { const v = localStorage.getItem("div-version"); if (VERSIONES.includes(v)) version = v; } catch (e) {}
+const VER = () => DATOS[moneda][version];
+// temporalidad del gráfico de la estrategia: 1H para la v1 en 1H, 4H para las demás
+const TF = () => es1H() ? "h1" : "h4";
+const SER = () => DATOS[moneda][TF()];
+const PER = () => es1H() ? 3600 : 14400;
+const NTF = () => es1H() ? "1H" : "4H";
+try { const m = localStorage.getItem("div-moneda"); if (MONEDAS.includes(m)) moneda = m; } catch (e) {}
+
+const css = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const fecha = s => { const d = new Date(s * 1000); return d.toISOString().slice(0, 16).replace("T", " "); };
+const fmt = (v, d = 2) => v == null ? "—" : v.toLocaleString("es-AR", { minimumFractionDigits: d, maximumFractionDigits: d });
+
+function opcionesBase() {
+  return {
+    autoSize: true,
+    layout: { background: { color: css("--panel") }, textColor: css("--muted"), fontFamily: "IBM Plex Mono, ui-monospace, monospace", fontSize: 11 },
+    grid: { vertLines: { color: css("--grid") }, horzLines: { color: css("--grid") } },
+    rightPriceScale: { borderColor: css("--line") },
+    timeScale: { borderColor: css("--line"), timeVisible: true, secondsVisible: false },
+    crosshair: {
+      mode: 0,
+      vertLine: { style: 2, width: 1, color: css("--cruz"), labelBackgroundColor: css("--fg") },
+      horzLine: { style: 2, width: 1, color: css("--cruz"), labelBackgroundColor: css("--fg") },
+    },
+    localization: { locale: "es-AR" },
+  };
+}
+
+function crear(id) {
+  const el = document.getElementById(id);
+  return { el, chart: LightweightCharts.createChart(el, opcionesBase()), capa: el.querySelector("canvas.capa") };
+}
+const G = { h4p: crear("h4-precio"), h4o: crear("h4-osc"), h4q: crear("h4-sqz"), h4a: crear("h4-adx"), dp: crear("d-precio"), do: crear("d-osc"), dq: crear("d-sqz") };
+G.h4o.chart.applyOptions({ timeScale: { visible: true } });
+
+const S = {
+  h4vela: G.h4p.chart.addCandlestickSeries({ priceLineVisible: false }),
+  h4hist: G.h4o.chart.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false }),
+  h4macd: G.h4o.chart.addLineSeries({ lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
+  h4sig: G.h4o.chart.addLineSeries({ lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
+  h4q: G.h4q.chart.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false }),
+  h4adx: G.h4a.chart.addLineSeries({ lineWidth: 2, priceLineVisible: false, lastValueVisible: true }),
+  h4dip: G.h4a.chart.addLineSeries({ lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
+  h4dim: G.h4a.chart.addLineSeries({ lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
+  dvela: G.dp.chart.addCandlestickSeries({ priceLineVisible: false }),
+  de10: G.dp.chart.addLineSeries({ lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
+  de55: G.dp.chart.addLineSeries({ lineWidth: 2, priceLineVisible: false, lastValueVisible: false }),
+  dhist: G.do.chart.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false }),
+  dmacd: G.do.chart.addLineSeries({ lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
+  dsig: G.do.chart.addLineSeries({ lineWidth: 1, priceLineVisible: false, lastValueVisible: false }),
+  dq: G.dq.chart.addHistogramSeries({ priceLineVisible: false, lastValueVisible: false }),
+};
+
+function colores() {
+  const up = css("--up"), down = css("--down");
+  S.h4vela.applyOptions({ upColor: up, downColor: down, borderUpColor: up, borderDownColor: down, wickUpColor: up, wickDownColor: down });
+  S.dvela.applyOptions({ upColor: up, downColor: down, borderUpColor: up, borderDownColor: down, wickUpColor: up, wickDownColor: down });
+  S.h4macd.applyOptions({ color: css("--macd") }); S.h4sig.applyOptions({ color: css("--signal") });
+  S.dmacd.applyOptions({ color: css("--macd") }); S.dsig.applyOptions({ color: css("--signal") });
+  S.de10.applyOptions({ color: css("--ema10") }); S.de55.applyOptions({ color: css("--ema55") });
+  S.h4adx.applyOptions({ color: css("--adx") }); S.h4dip.applyOptions({ color: css("--dip") }); S.h4dim.applyOptions({ color: css("--dim") });
+  for (const g of Object.values(G)) g.chart.applyOptions(opcionesBase());
+}
+
+const velas = s => s.t.map((t, i) => s.c[i] == null ? { time: t } : { time: t, open: s.o[i], high: s.h[i], low: s.l[i], close: s.c[i] });
+const linea = (s, k) => s.t.map((t, i) => s[k][i] == null ? { time: t } : { time: t, value: s[k][i] });
+function histograma(s, k = "x") {
+  const c = [css("--hist-up"), css("--hist-up-weak"), css("--hist-dn"), css("--hist-dn-weak")];
+  return s.t.map((t, i) => {
+    const v = s[k][i], p = i > 0 ? s[k][i - 1] : null;
+    if (v == null) return { time: t };
+    const sube = p == null || v >= p;
+    return { time: t, value: v, color: v >= 0 ? (sube ? c[0] : c[1]) : (sube ? c[3] : c[2]) };
+  });
+}
+
+let indice4 = new Map(), indiceD = new Map(), visibles = [], operaciones = [];
+
+// la divergencia se confirma al cierre de la vela t; la señal (y la entrada) es la vela siguiente, t + 1
+function senal(t) {
+  const s = SER(), i = indice4.get(t);
+  return i != null && i + 1 < s.t.length ? s.t[i + 1] : t + PER();
+}
+
+// reglas de la v1 de una divergencia: v[11] tendencia diaria; v[13] bits 1 RSI, 2 picos, 4 ADX diario;
+// v[14] RSI en espejo, v[15] diferencia de picos (%), v[16] ADX diario
+const REGLAS = [["D", v => v[11] === v[1]], ["RSI", v => (v[13] & 1) > 0], ["P", v => (v[13] & 2) > 0], ["ADX", v => (v[13] & 4) > 0]];
+const cumple = v => !!REB[version] || REGLAS.every(([, ok]) => ok(v));
+// clases que opera cada estrategia: la v1 en 1H opera regulares y exageradas; las demás, solo regulares
+const operable = v => v[0] === 0 || (version === "v1h" && v[0] === 2) || (version === "oc4" || version === "oc1") && v[0] === 1;
+
+function filtrar() {
+  const D = DATOS[moneda];
+  const ver = [document.getElementById("f-reg").checked, document.getElementById("f-ocu").checked, document.getElementById("f-exa").checked, document.getElementById("f-ago").checked];
+  document.getElementById("chip-ago").style.display = version === "v1h" ? "" : "none";
+  const favor = document.getElementById("f-favor").checked;
+  // las señales generadas (operadas o salteadas) se ven siempre, aunque su clase esté desmarcada
+  const generadas = new Set([...VER().trades.map(t => t[0]), ...(VER().descartes || []).map(x => x[0])]);
+  visibles = VER().divs.filter(v => (ver[v[0]] || (operable(v) && generadas.has(senal(v[10])))) && (!favor || v[11] === v[1]));
+  operaciones = document.getElementById("f-ops").checked ? VER().trades : [];
+  const mk = [];
+  for (const v of visibles) {
+    mk.push({ time: senal(v[10]), position: v[1] > 0 ? "belowBar" : "aboveBar", shape: v[1] > 0 ? "arrowUp" : "arrowDown",
+              color: css(v[1] > 0 ? "--up" : "--down"), size: 1, text: (v[0] >= 2 ? (v[0] === 3 ? "Agotamiento " : "Exagerada ") : "") + (v[1] > 0 ? (v[0] >= 2 ? "alcista" : "Alcista") : (v[0] >= 2 ? "bajista" : "Bajista")) });
+  }
+  mk.sort((a, b) => a.time - b.time);
+  S.h4vela.setMarkers(mk);
+  dibujar();
+}
+
+function cargar() {
+  const D = DATOS[moneda];
+  if (typeof medida !== "undefined" && medida) { medida = null; document.getElementById("lectura").innerHTML = ""; }
+  for (const b of MONEDAS) document.getElementById("b-" + b).setAttribute("aria-pressed", String(b === moneda));
+  for (const w of VERSIONES) document.getElementById("b-" + w).setAttribute("aria-pressed", String(w === version));
+  const X = SER();
+  indice4 = new Map(X.t.map((t, i) => [t, i]));
+  S.h4vela.setData(velas(X)); S.h4hist.setData(histograma(X)); S.h4q.setData(histograma(X, "q")); S.h4macd.setData(linea(X, "m")); S.h4sig.setData(linea(X, "s"));
+  S.h4adx.setData(linea(X, "a")); S.h4dip.setData(linea(X, "dp")); S.h4dim.setData(linea(X, "dm"));
+  document.getElementById("tf-titulo").textContent = es1H() ? "1 hora" : "4 horas";
+  document.getElementById("tabla-titulo").textContent = `Últimas divergencias en ${es1H() ? "1 hora" : "4 horas"}`;
+  indiceD = new Map(D.diario.t.map((t, i) => [t, i]));
+  S.dvela.setData(velas(D.diario)); S.de10.setData(linea(D.diario, "e10")); S.de55.setData(linea(D.diario, "e55"));
+  S.dhist.setData(histograma(D.diario)); S.dmacd.setData(linea(D.diario, "m")); S.dsig.setData(linea(D.diario, "s")); S.dq.setData(histograma(D.diario, "q"));
+  const n4 = X.t.length, nd = D.diario.t.length;
+  G.h4p.chart.timeScale().setVisibleLogicalRange({ from: n4 - (es1H() ? 480 : 360), to: n4 + 4 });
+  G.dp.chart.timeScale().setVisibleLogicalRange({ from: nd - 400, to: nd + 3 });
+  filtrar(); tabla(); resumen(); posiciones(); noOperadas(); tablaDiaria(); dibujarD();
+}
+
+// clic en una posición abierta: el gráfico va a su moneda, su estrategia y su tramo
+let posAbiertas = [];
+// operaciones de la estrategia diaria: van al panel diario
+function irADiario(m, t) {
+  const tD = t + GMT3 - ((t + GMT3) % 86400), i = indiceD.get(tD); if (i == null) return;
+  G.dp.chart.timeScale().setVisibleLogicalRange({ from: i - 120, to: i + 60 }); G.dp.el.scrollIntoView({ behavior: "smooth", block: "center" });
+}
+async function irAPosicion(a) {
+  if (a.w === "d1") { await traerSerie(a.m); moneda = a.m; cargar(); irADiario(a.m, a.t); return; }
+  await traerSerie(a.m); moneda = a.m; version = a.w; cargar();
+  const i = indice4.get(vela(a.t, PER())), n = SER().t.length; if (i == null) return;
+  G.h4p.chart.timeScale().setVisibleLogicalRange({ from: i - Math.max(40, Math.round((n - i) * 0.6)), to: n + 4 });
+  document.getElementById("panel-tf").scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// posiciones abiertas de las tres estrategias, en las dos monedas, con el registro de cada recálculo del SL y el TP
+function posiciones() {
+  const P = Object.values(DATOS).flatMap(D => TODAS.flatMap(w => (D[w].abiertas || []).map(a => ({ ...a, w }))))
+    .filter(a => pasa("abiertas", { ind: catInd(a.w), tf: catTf(a.w), m: a.m, lado: catLado(a.s) })).sort((a, b) => b.t - a.t);
+  posAbiertas = P;
+  const h = Math.max(...Object.values(DATOS).map(D => D.hasta));
+  const sl = a => a.reg.length ? a.reg[a.reg.length - 1][3] : a.sl0;
+  const dur = a => durTexto((h - a.t) / 3600), roi = a => 100 * a.neto / a.tam;
+  const clase = a => a.neto >= 0 ? "p-gana" : "p-pierde", sig = v => (v >= 0 ? "+" : "") + fmt(v);
+  document.getElementById("abiertas-titulo").textContent = `Posiciones abiertas (${P.length})`;
+  document.getElementById("abiertas-leyenda").textContent = `al último cierre, ${fecha(h)} GMT-3; PnL con comisiones y funding; clic en una fila para verla en el gráfico; abrí cada registro para ver el SL y el TP vela por vela`;
+  document.getElementById("tabla-abiertas").innerHTML = P.length ? P.map((a, k) => `<tr data-k="${k}" style="cursor: pointer" title="Ver esta posición en el gráfico"><td>${a.est}</td><td>${a.m}</td><td><span class="pill ${a.s > 0 ? "p-largo" : "p-corto"}">${a.s > 0 ? "largo" : "corto"}</span></td><td>${fecha(a.t)}</td>` +
+    `<td class="num">${fmt(a.tam, 0)}</td><td class="num">${fmt(a.e)}</td><td class="num">${fmt(a.precio)}</td><td class="num">${fmt(a.sl0)}</td><td class="num"><b>${fmt(sl(a))}</b></td>` +
+    `<td class="num">${fmt(100 * a.s * (a.precio - sl(a)) / a.precio, 2)} %</td><td class="num">${a.tp == null ? "sin TP" : `${fmt(a.tp)}${a.tpok ? " (cobrado)" : ""}`}</td><td>${dur(a)}</td><td class="num">${sig(-a.fu)}</td>` +
+    `<td class="num"><span class="${clase(a)}">${sig(a.neto)} USDT</span></td><td class="num"><span class="${clase(a)}">${sig(roi(a))} %</span></td></tr>`).join("")
+    : `<tr><td colspan="15" style="color: var(--muted)">No hay posiciones abiertas</td></tr>`;
+  document.getElementById("registros").innerHTML = P.map(a => {
+    const r = a.reg.slice().reverse().map((x, i, L) => {
+      const prev = i + 1 < L.length ? L[i + 1][3] : a.sl0, cambio = x[3] - prev, mejora = a.s * cambio > 0;
+      return `<tr><td>${fecha(x[0])}</td><td class="num">${fmt(x[1])}</td><td class="num">${fmt(x[2])}</td><td class="num"><b>${fmt(x[3])}</b></td>` +
+        `<td class="num"><span class="${cambio === 0 ? "" : mejora ? "p-gana" : "p-pierde"}">${cambio === 0 ? "—" : (cambio > 0 ? "+" : "") + fmt(cambio)}</span></td><td class="num">${a.tp == null ? "sin TP" : fmt(a.tp)}</td></tr>`;
+    }).join("");
+    return `<details style="margin-top: 8px"><summary style="cursor: pointer">Registro: ${a.est} · ${a.m} ${a.s > 0 ? "largo" : "corto"} · entrada ${fecha(a.t)} · ${a.reg.length} recálculos</summary>` +
+      `<div class="tabla-caja" style="max-height: 280px; overflow-y: auto"><table><thead><tr><th>Cierre de vela</th><th class="num">Cierre</th><th class="num">ATR</th><th class="num">SL</th><th class="num">Cambio</th><th class="num">TP</th></tr></thead><tbody>${r}</tbody></table></div></details>`;
+  }).join("");
+}
+
+// por qué una divergencia de 1H no se operó: reglas sin cumplir, o motivo de la señal salteada
+const MOTIVO = { D: "diario en contra", RSI: "RSI", P: "picos", ADX: "ADX diario" };
+function porQue(v, w, desc) {
+  const m = REGLAS.filter(([, ok]) => !ok(v)).map(([n]) => MOTIVO[n]), nd = desc.get(v[10] + 3600);
+  if (nd) m.push(nd);
+  if (w === "sqz" && v[0] === 2) m.push("las exageradas del Squeeze no se operan");
+  return m.length ? m.join(" · ") : "tope de posiciones";
+}
+function noOperadas() {
+  const F = Object.entries(DATOS).flatMap(([m, D]) => ["v1h", "sqz"].flatMap(w => {
+    const ops = new Set(D[w].trades.map(t => t[0])), desc = new Map((D[w].descartes || []).map(x => [x[0], x[2]]));
+    return D[w].divs.filter(v => (v[0] === 0 || v[0] === 2) && !ops.has(v[10] + 3600)).map(v => ({ m, w, v, por: porQue(v, w, desc) }));
+  })).filter(o => pasa("nops", { ind: catInd(o.w), m: o.m, lado: catLado(o.v[1]), tipo: TIPOS[o.v[0]] })).sort((a, b) => b.v[10] - a.v[10]);
+  const L = F.slice(0, 100);
+  document.getElementById("nops-titulo").textContent = `Divergencias de 1H que no se operan (últimas ${L.length})`;
+  document.getElementById("tabla-nops").innerHTML = L.map(({ m, w, v, por }) => `<tr><td>${fecha(v[10] + 3600)}</td><td>${m}</td><td>${w === "sqz" ? "SQZ MOM" : "MACD"}</td><td>${TIPOS[v[0]]}</td>` +
+    `<td><span class="pill ${v[1] > 0 ? "p-largo" : "p-corto"}">${v[1] > 0 ? "alcista" : "bajista"}</span></td><td class="num">${v[17] == null ? "próxima vela" : fmt(v[17])}</td><td class="num">${fmt(v[18])}</td><td class="num">${fmt(v[19])}</td>` +
+    `<td style="color: var(--muted)">${por}</td></tr>`).join("");
+}
+
+function resumen() {
+  const D = DATOS[moneda], T = VER().trades;
+  const neto = T.reduce((a, t) => a + t[6], 0), gan = T.filter(t => t[6] > 0).length;
+  const c = D.diario.c, e10 = D.diario.e10, e55 = D.diario.e55, n = c.length - 1;
+  const tend = e10[n] > e55[n] ? "alcista" : "bajista";
+  const abiertas = T.filter(t => t[7]).length;
+  const cont = [0, 1, 2].map(k => VER().divs.filter(v => v[0] === k).length);
+  const cumplen = [0, 1, 2].map(k => VER().divs.filter(v => v[0] === k && cumple(v)).length);
+  document.getElementById("resumen").innerHTML =
+    `<span>último cierre de ${NTF()} <b>${fmt(SER().c[SER().c.length - 1])}</b></span>` +
+    `<span>diario <b>${tend}</b></span>` +
+    `<span>divergencias de ${NTF()}${es1H() ? " (desde 2025)" : ""} <b>${cont[0]}</b> regulares · <b>${cont[1]}</b> ocultas · <b>${cont[2]}</b> exageradas${version === "v1h" ? ` · <b>${VER().divs.filter(v => v[0] === 3).length}</b> de agotamiento (en estudio, no se operan)` : ""}</span>` +
+    `<span>cumplen todas las reglas <b>${cumplen[0]}</b> regulares · <b>${cumplen[1]}</b> ocultas · <b>${cumplen[2]}</b> exageradas</span>` +
+    `<span>estrategia <b>${T.length}</b> operaciones · <b>${gan}</b> ganadoras · PnL <b>${neto >= 0 ? "+" : ""}${fmt(neto)} USDT</b> · ` +
+    `<b>${fmt(neto / 10, 1)} %</b> sobre 1000 USDT · ROI medio por operación <b>${fmt(100 * neto / Math.max(1e-9, T.reduce((a, t) => a + t[5], 0)), 2)} %</b> · abiertas <b>${abiertas}</b> · señales salteadas <b>${(VER().descartes || []).length}</b></span>`;
+  const desc = REB[version] || { v1: "v1 en 4H (dispara en la primera barra que retrocede tras el lomo, filtro RSI < 45 y pico ≥ 30 %, ADX diario ≥ 20, sin cruce a favor previo, 33 % a 2 ATR y trailing, tamaño por RSI de 30 min y EMA200)",
+                 v1h: "v1 en 1H (las mismas reglas en 1 hora con RSI ≤ 62, picos entre 9 % y 58 %, ADX diario ≥ 16 en las regulares, 25 % a 1,5 ATR y el resto con SL libre a 3 ATR del cierre, sin la regla 7, regulares por pivotes con cruce por cero y exageradas (también entre dos lomos de la misma joroba; las exageradas se confirman en el giro del histograma), con la tendencia diaria; gráfico y operaciones desde enero de 2025)",
+                 sqz: "Squeeze en 1H (regulares del SQZ MOM por lomos y giro, a favor del diario, RSI ≤ 62, picos entre 9 % y 58 %, ADX diario ≥ 16, SL libre a 3 ATR del cierre con piso de +1 ATR tras avanzar 4 ATR, 50 USDT, sin las que coinciden con la v1 en 1H; gráfico y operaciones desde enero de 2025)" }[version];
+  document.getElementById("sub").textContent = `${moneda === "NKE" ? "NKE/USDT, la acción en Yahoo y el perpetuo de BingX desde junio de 2026; las horas sin mercado son velas planas; señales en prueba" : `${moneda}/USDT, velas de Binance spot desde agosto de 2017 y de futuros perpetuos de BingX desde abril de 2024`}, hasta el ${fecha(D.hasta)} GMT-3 · estrategia ${desc} · tamaño ajustado por volatilidad (×0,5 a ×2)`;
+}
+
+function tabla() {
+  const D = DATOS[moneda];
+  const ops = new Map(VER().trades.map(t => [t[0], t])), desc = new Map((VER().descartes || []).map(x => [x[0], x[2]]));
+  const filas = VER().divs.slice(-15).reverse().map(v => {
+    const reglas = REGLAS.map(([nom, ok]) => `<span class="${ok(v) ? "si" : "no"}">${nom}${ok(v) ? "✓" : "✗"}</span>`).join(" ");
+    const op = ops.get(v[10] + PER());
+    const nd = desc.get(senal(v[10]));
+    const est = v[0] === 3 ? '<span style="color: var(--muted)">en estudio: no se opera</span>' : nd != null ? `<span style="color: var(--muted)">señal generada; no se opera (${nd}): no aporta al resultado</span>` : op ? `<span class="${op[6] > 0 ? "p-gana" : "p-pierde"}">${op[7] ? "abierta" : "operada"} · nocional ${fmt(op[5], op[5] % 1 ? 1 : 0)} · PnL ${op[6] >= 0 ? "+" : ""}${fmt(op[6])} USDT · ROI ${roiOp(op) >= 0 ? "+" : ""}${fmt(roiOp(op), 1)} %${op[8] > 0 ? " · TP parcial cobrado" : ""}</span>`
+      : (!operable(v) ? '<span style="color: var(--muted)">—</span>'
+        : `<span style="color: var(--muted)">no: ${v[11] !== v[1] ? "diario en contra" : v[12] === 0 ? "filtro RSI / pico" : v[12] === 2 ? "diario sin tendencia (ADX < 20)" : "tope de posiciones"}</span>`);
+    const dia = v[11] > 0 ? "alcista" : v[11] < 0 ? "bajista" : "sin dato";
+    return `<tr><td>${fecha(senal(v[10]))}</td><td>${TIPOS[v[0]]}</td><td><span class="pill ${v[1] > 0 ? "p-largo" : "p-corto"}">${v[1] > 0 ? "alcista" : "bajista"}</span></td>` +
+      `<td class="num">${fmt(v[3])} → ${fmt(v[5])}</td><td class="num">${fmt(v[7], 3)} → ${fmt(v[9], 3)}</td><td>${dia}</td>` +
+      `<td class="reglas-celda">${reglas}</td><td>${est}</td></tr>`;
+  });
+  document.getElementById("tabla").innerHTML = filas.join("");
+  tablaOps();
+}
+
+// operaciones cerradas de las tres estrategias, en las dos monedas; el 1H anterior a 2025 no está en el gráfico
+let opsCerradas = null;
+function tablaOps() {
+  const EST = { v1: "v1 · 4H", v1h: "v1 · 1H", sqz: "SQZ · 1H", rc4: "Regulares contra · 4H", sc4: "SQZ contra · 4H", rr4: "RSI 30m · 4H", oc4: "Ocultas contra · 4H", oc1: "Ocultas contra · 1H", d1: "Compras · 1D" };
+  if (!opsCerradas) {
+    opsCerradas = Object.entries(DATOS).flatMap(([m, D]) => Object.keys(EST).flatMap(w => [...(D[w].ant || []), ...D[w].trades].filter(t => !t[7]).map(t => ({ m, w, t }))))
+      .sort((a, b) => b.t[2] - a.t[2]);
+    document.getElementById("tabla-ops").addEventListener("click", async e => {
+      const tr = e.target.closest("tr[data-k]"); if (!tr) return;
+      const o = opsCerradas[+tr.dataset.k], t = o.t;
+      if (o.w === "d1") { await traerSerie(o.m); moneda = o.m; cargar(); irADiario(o.m, t[0]); return; }
+      await traerSerie(o.m); moneda = o.m; version = o.w; cargar();
+      const per = PER(), i1 = indice4.get(vela(t[0], per)), i2 = indice4.get(vela(t[2], per));
+      if (i1 == null || i2 == null) return;                              // 1H anterior a 2025: no está en el gráfico
+      const n = Math.max(30, Math.round((i2 - i1) * 0.6));
+      G.h4p.chart.timeScale().setVisibleLogicalRange({ from: i1 - n, to: i2 + n });
+      document.getElementById("panel-tf").scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+  const L = opsCerradas.map((o, k) => ({ ...o, k })).filter(o => pasa("ops", { ind: catInd(o.w), tf: catTf(o.w), m: o.m, lado: catLado(o.t[4]),
+    res: o.t[6] > 0 ? "ganadoras" : "perdedoras", anio: fecha(o.t[0]).slice(0, 4) }));
+  const neto = L.reduce((a, o) => a + o.t[6], 0), gan = L.filter(o => o.t[6] > 0).length;
+  document.getElementById("ops-titulo").textContent = `Operaciones cerradas (${L.length} · ${gan} ganadoras · PnL ${neto >= 0 ? "+" : ""}${fmt(neto)} USDT)`;
+  document.getElementById("tabla-ops").innerHTML = L.map(({ m, w, t, k }) => {
+    const c = t[6] > 0 ? "p-gana" : "p-pierde", tp = t[10] == null ? "sin TP" : t[12] != null ? `${fmt(t[10])} (cobrado)` : fmt(t[10]);
+    return `<tr data-k="${k}" style="cursor: pointer"><td>${EST[w]}</td><td>${m}</td><td><span class="pill ${t[4] > 0 ? "p-largo" : "p-corto"}">${t[4] > 0 ? "largo" : "corto"}</span></td><td>${fecha(t[0])}</td><td>${fecha(t[2])}</td>` +
+      `<td class="num">${fmt(t[5], t[5] % 1 ? 1 : 0)}</td><td class="num">${fmt(t[1])}</td><td class="num">${fmt(t[3])}</td><td class="num">${fmt(t[9])}</td><td class="num">${tp}</td><td style="color: var(--muted)">${t[13]}</td><td>${durTexto((t[2] - t[0]) / 3600)}</td><td class="num">${t[14] == null ? "—" : `${-t[14] >= 0 ? "+" : ""}${fmt(-t[14])}`}</td>` +
+      `<td class="num"><span class="${c}">${t[6] >= 0 ? "+" : ""}${fmt(t[6])} USDT</span></td><td class="num"><span class="${c}">${roiOp(t) >= 0 ? "+" : ""}${fmt(roiOp(t), 2)} %</span></td></tr>`;
+  }).join("");
+}
+
+function preparar(capa, el) {
+  const dpr = window.devicePixelRatio || 1, w = el.clientWidth, h = el.clientHeight;
+  if (capa.width !== Math.round(w * dpr) || capa.height !== Math.round(h * dpr)) {
+    capa.width = Math.round(w * dpr); capa.height = Math.round(h * dpr); capa.style.width = w + "px"; capa.style.height = h + "px";
+  }
+  const ctx = capa.getContext("2d"); ctx.setTransform(dpr, 0, 0, dpr, 0, 0); ctx.clearRect(0, 0, w, h);
+  return ctx;
+}
+
+function segmento(ctx, ts, serie, t1, p1, t2, p2, color, ancho, raya, indice = indice4) {
+  const i1 = indice.get(t1), i2 = indice.get(t2);
+  if (i1 == null || i2 == null) return;
+  const x1 = ts.logicalToCoordinate(i1), x2 = ts.logicalToCoordinate(i2);
+  const y1 = serie.priceToCoordinate(p1), y2 = serie.priceToCoordinate(p2);
+  if (x1 == null || x2 == null || y1 == null || y2 == null) return;
+  if (Math.max(x1, x2) < 0 || Math.min(x1, x2) > ts.width()) return;
+  ctx.strokeStyle = color; ctx.lineWidth = ancho; ctx.setLineDash(raya || []);
+  ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+  if (!raya) { ctx.fillStyle = color; for (const [x, y] of [[x1, y1], [x2, y2]]) { ctx.beginPath(); ctx.arc(x, y, 2.5, 0, 6.3); ctx.fill(); } }
+  return [x1, y1, x2, y2];
+}
+
+// rótulo del tipo de divergencia junto al punto B del histograma
+function rotulo(ctx, xy, texto, color, arriba) {
+  if (!xy) return;
+  const [x1, , x2, y2] = xy;
+  ctx.font = '500 11px "IBM Plex Mono", ui-monospace, monospace';
+  ctx.textAlign = x2 >= x1 ? "left" : "right"; ctx.textBaseline = arriba ? "bottom" : "top";
+  const w = ctx.measureText(texto).width, xt = x2 + (x2 >= x1 ? 6 : -6), yt = y2 + (arriba ? -4 : 4);
+  ctx.fillStyle = css("--panel"); ctx.globalAlpha = 0.85;
+  ctx.fillRect(x2 >= x1 ? xt - 2 : xt - w - 2, arriba ? yt - 13 : yt - 1, w + 4, 14);
+  ctx.globalAlpha = 1; ctx.fillStyle = color; ctx.fillText(texto, xt, yt);
+}
+
+// una operación: [entrada, precio, salida, precio, lado, tamaño, neto, abierta, TP cobrado, stop inicial, TP 25 %, stop vigente]
+const durTexto = h => h >= 48 ? `${fmt(h / 24, 1)} d` : `${fmt(h, 0)} h`;
+const pctOp = t => t[4] * (t[3] / t[1] - 1) * 100;
+const roiOp = t => 100 * t[6] / t[5];   // PnL neto (con comisiones y el TP parcial) sobre el nocional; x1
+function cajaOperacion(ctx, ts, t) {
+  const per = PER(), X = SER(), ult = X.t[X.t.length - 1];
+  const i1 = indice4.get(vela(t[0], per)), i2 = t[7] ? X.t.length - 1 : indice4.get(vela(t[2], per));
+  if (i1 == null || i2 == null) return;
+  let x1 = ts.logicalToCoordinate(i1), x2 = ts.logicalToCoordinate(i2);
+  if (x1 == null || x2 == null || x2 < 0 || x1 > ts.width()) return;
+  if (x2 - x1 < 3) x2 = x1 + 3;
+  const y = p => p == null ? null : S.h4vela.priceToCoordinate(p);
+  const yE = y(t[1]), yX = y(t[3]), yS = y(t[9]), yT = y(t[10]);
+  if (yE == null || yX == null) return;
+  const abierta = t[7], col = abierta ? css("--abierta") : css(t[6] > 0 ? "--win" : "--loss");
+  ctx.save();
+  // zonas: del precio de entrada al stop inicial (riesgo) y al TP del 25 % (objetivo)
+  if (yS != null) { ctx.fillStyle = css("--loss"); ctx.globalAlpha = 0.10; ctx.fillRect(x1, Math.min(yE, yS), x2 - x1, Math.abs(yS - yE)); }
+  if (yT != null) { ctx.fillStyle = css("--win"); ctx.globalAlpha = 0.10; ctx.fillRect(x1, Math.min(yE, yT), x2 - x1, Math.abs(yT - yE)); }
+  ctx.globalAlpha = 1;
+  // precio de entrada y de salida (o actual) a lo largo de la operación
+  ctx.strokeStyle = col; ctx.lineWidth = abierta ? 2 : 1.2; ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(x1, yE); ctx.lineTo(x2, yE); ctx.stroke();
+  ctx.setLineDash([5, 4]); ctx.beginPath(); ctx.moveTo(x1, yE); ctx.lineTo(x2, yX); ctx.stroke();
+  ctx.setLineDash([]); ctx.beginPath(); ctx.moveTo(x2, yE); ctx.lineTo(x2, yX); ctx.stroke();
+  ctx.fillStyle = col; for (const [x, yy] of [[x1, yE], [x2, yX]]) { ctx.beginPath(); ctx.arc(x, yy, 3, 0, 6.3); ctx.fill(); }
+  if (abierta && t[11] != null) {                        // stop vigente de la operación abierta
+    const yV = y(t[11]);
+    if (yV != null) {
+      ctx.strokeStyle = css("--loss"); ctx.setLineDash([2, 3]); ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(x1, yV); ctx.lineTo(x2 + 40, yV); ctx.stroke(); ctx.setLineDash([]);
+      ctx.font = '500 10px "IBM Plex Mono", ui-monospace, monospace'; ctx.fillStyle = css("--loss");
+      ctx.textAlign = "left"; ctx.textBaseline = "bottom"; ctx.fillText(`stop ${fmt(t[11])}`, x2 + 4, yV - 2);
+    }
+  }
+  // rótulo: resultado en % del precio y duración, si la caja tiene lugar
+  if (x2 - x1 > 34 || abierta) {
+    const horas = ((abierta ? ult + per : t[2]) - t[0]) / 3600, pct = pctOp(t);
+    const roi = roiOp(t);
+    const txt = `${abierta ? "abierta · " : ""}ROI ${roi >= 0 ? "+" : ""}${fmt(roi, 1)} % · ${t[6] >= 0 ? "+" : ""}${fmt(t[6])} USDT · ${durTexto(horas)}`;
+    ctx.font = '600 11px "IBM Plex Mono", ui-monospace, monospace';
+    const w = ctx.measureText(txt).width + 8;
+    const yt = Math.min(yE, yX) - 18, xt = Math.min(Math.max(x1, 2), ts.width() - w - 2);
+    ctx.fillStyle = css("--panel"); ctx.globalAlpha = 0.9; ctx.fillRect(xt, yt, w, 15); ctx.globalAlpha = 1;
+    ctx.fillStyle = col; ctx.textAlign = "left"; ctx.textBaseline = "middle"; ctx.fillText(txt, xt + 4, yt + 8);
+  }
+  ctx.restore();
+}
+
+let pendiente = false;
+function dibujar() {
+  if (pendiente) return; pendiente = true;
+  requestAnimationFrame(() => {
+    pendiente = false;
+    const tp = G.h4p.chart.timeScale(), to = G.h4o.chart.timeScale();
+    const tq = G.h4q.chart.timeScale(), cq = preparar(G.h4q.capa, G.h4q.el);
+    const cp = preparar(G.h4p.capa, G.h4p.el), co = preparar(G.h4o.capa, G.h4o.el);
+    cq.save(); cq.beginPath(); cq.rect(0, 0, tq.width(), G.h4q.el.clientHeight); cq.clip();
+    const sq = version === "sqz" || version === "sc4";                                       // las divergencias del Squeeze se marcan en su panel
+    cp.save(); cp.beginPath(); cp.rect(0, 0, tp.width(), G.h4p.el.clientHeight); cp.clip();
+    co.save(); co.beginPath(); co.rect(0, 0, to.width(), G.h4o.el.clientHeight); co.clip();
+    const cols = [css("--reg"), css("--ocu"), css("--exa"), css("--ago")];
+    for (const v of visibles) {
+      segmento(cp, tp, S.h4vela, v[2], v[3], v[4], v[5], cols[v[0]], 1.6);
+      const xy = segmento(sq ? cq : co, sq ? tq : to, sq ? S.h4q : S.h4hist, v[6], v[7], v[8], v[9], cols[v[0]], 1.6);
+      rotulo(sq ? cq : co, xy, `${TIPOS[v[0]]} ${v[1] > 0 ? "alcista" : "bajista"}`, cols[v[0]], v[9] >= 0);
+    }
+    for (const t of operaciones) cajaOperacion(cp, tp, t);
+    if (medida && medida.tf === "4h") dibujarMedida(cp, G.h4p, S.h4vela, indice4);
+    cp.restore(); co.restore(); cq.restore();
+  });
+}
+
+// ---- herramienta de medición: dos clics sobre las velas (se ajusta al O/H/L/C más cercano del clic) ----
+let midiendo = false, medida = null;
+const fmtPct = v => (v >= 0 ? "+" : "") + fmt(v, 2) + " %";
+function ajustar(tf, t, precio) {
+  const s = tf === "4h" ? SER() : DATOS[moneda].diario, i = (tf === "4h" ? indice4 : indiceD).get(t);
+  if (i == null) return null;
+  let mejor = s.c[i];
+  for (const v of [s.o[i], s.h[i], s.l[i], s.c[i]]) if (v != null && Math.abs(v - precio) < Math.abs(mejor - precio)) mejor = v;
+  return { t, p: mejor, i };
+}
+function textoMedida() {
+  if (!medida || !medida.b) return medida ? `${medida.tf === "4h" ? NTF() : "diario"} · A ${fecha(medida.a.t)} en <b>${fmt(medida.a.p)}</b>; falta el segundo clic` : "";
+  const { a, b } = medida, pct = (b.p / a.p - 1) * 100, velas = Math.abs(b.i - a.i), horas = Math.abs(b.t - a.t) / 3600;
+  const dur = horas >= 48 ? `${fmt(horas / 24, 1)} días` : `${fmt(horas, 0)} h`;
+  return `${medida.tf === "4h" ? NTF() : "diario"} · ${fmt(a.p)} → ${fmt(b.p)}: <b>${fmtPct(pct)}</b> (${b.p - a.p >= 0 ? "+" : ""}${fmt(b.p - a.p)}) en ${velas} velas, ${dur}`;
+}
+function dibujarMedida(ctx, g, serie, indice) {
+  const ts = g.chart.timeScale(), pts = [medida.a, medida.b].filter(Boolean).map(q => {
+    const i = indice.get(q.t); return i == null ? null : [ts.logicalToCoordinate(i), serie.priceToCoordinate(q.p)];
+  });
+  if (pts.some(q => !q || q[0] == null || q[1] == null)) return;
+  const sube = medida.b ? medida.b.p >= medida.a.p : true, col = css(sube ? "--up" : "--down");
+  ctx.save(); ctx.strokeStyle = col; ctx.fillStyle = col; ctx.lineWidth = 1.5; ctx.setLineDash([]);
+  for (const [x, y] of pts) { ctx.beginPath(); ctx.arc(x, y, 3.5, 0, 6.3); ctx.fill(); }
+  if (pts.length === 2) {
+    const [[x1, y1], [x2, y2]] = pts;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.setLineDash([3, 3]); ctx.globalAlpha = 0.6;
+    ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y1); ctx.lineTo(x2, y2); ctx.stroke();
+    ctx.globalAlpha = 1; ctx.setLineDash([]);
+    const pct = (medida.b.p / medida.a.p - 1) * 100, txt = `${fmtPct(pct)} · ${Math.abs(medida.b.i - medida.a.i)} velas`;
+    ctx.font = '600 12px "IBM Plex Mono", ui-monospace, monospace';
+    const w = ctx.measureText(txt).width + 12, xt = Math.min(x2 + 8, ts.width() - w - 4), yt = y2 + (pct >= 0 ? -26 : 8);
+    ctx.fillStyle = css("--panel"); ctx.globalAlpha = 0.92; ctx.fillRect(xt, yt, w, 20); ctx.globalAlpha = 1;
+    ctx.strokeStyle = col; ctx.strokeRect(xt, yt, w, 20);
+    ctx.fillStyle = col; ctx.textBaseline = "middle"; ctx.textAlign = "left"; ctx.fillText(txt, xt + 6, yt + 10);
+  }
+  ctx.restore();
+}
+let pendienteD = false;
+function dibujarD() {
+  if (pendienteD) return; pendienteD = true;
+  requestAnimationFrame(() => {
+    pendienteD = false;
+    const ctx = preparar(G.dp.capa, G.dp.el), cm = preparar(G.do.capa, G.do.el), cs = preparar(G.dq.capa, G.dq.el);
+    const tp = G.dp.chart.timeScale(), tm = G.do.chart.timeScale(), tq = G.dq.chart.timeScale(), cols = [css("--reg"), css("--ocu"), css("--exa")];
+    for (const [c, ts, el] of [[ctx, tp, G.dp.el], [cm, tm, G.do.el], [cs, tq, G.dq.el]]) { c.save(); c.beginPath(); c.rect(0, 0, ts.width(), el.clientHeight); c.clip(); }
+    for (const v of divsDiario()) {
+      const raya = v[0] === "mayores" ? [5, 4] : null, sq = v[1] === "squeeze", col = cols[v[2]];
+      const xy = segmento(ctx, tp, S.dvela, v[4], v[5], v[6], v[7], col, 1.6, raya, indiceD);
+      segmento(sq ? cs : cm, sq ? tq : tm, sq ? S.dq : S.dhist, v[8], v[9], v[10], v[11], col, 1.6, raya, indiceD);
+      rotulo(ctx, xy, `${["R", "O", "E"][v[2]]}${v[3] > 0 ? "▲" : "▼"}${sq ? "s" : "m"}`, col, v[3] < 0);
+    }
+    for (const c of [ctx, cm, cs]) c.restore();
+    if (medida && medida.tf === "d") {
+      ctx.save(); ctx.beginPath(); ctx.rect(0, 0, G.dp.chart.timeScale().width(), G.dp.el.clientHeight); ctx.clip();
+      dibujarMedida(ctx, G.dp, S.dvela, indiceD); ctx.restore();
+    }
+  });
+}
+// divergencias diarias: se muestran para revisarlas, no se operan
+// v: [detectores, indicador, clase, lado, tA, precio A, tB, precio B, t osc. A, osc. A, t osc. B, osc. B, t señal, semanal]
+function divsDiario() {
+  const on = id => document.getElementById(id).checked, cl = [on("d-reg"), on("d-ocu"), on("d-exa")], M = on("d-macd"), Q = on("d-sqz-f"), may = on("d-may"), otr = on("d-otr");
+  return (DATOS[moneda].diario.divs || []).filter(v => cl[v[2]] && (v[1] === "macd" ? M : Q) && (v[0] === "mayores" ? may : (otr || (may && v[0].includes("mayores")))));
+}
+function tablaDiaria() {
+  const L = divsDiario().slice().reverse(), dia = s => fecha(s).slice(0, 10), sem = { 1: "alcista", "-1": "bajista", 0: "sin dato" };
+  document.getElementById("dd-titulo").textContent = `Divergencias diarias de ${moneda} (${L.length})`;
+  document.getElementById("tabla-dd").innerHTML = L.map(v => `<tr data-t="${v[6]}" style="cursor: pointer"><td>${dia(v[12])}</td><td>${dia(v[12] + 86400)}</td><td>${v[1] === "squeeze" ? "SQZ MOM" : "MACD"}</td><td>${TIPOS[v[2]]}</td><td><span class="pill ${v[3] > 0 ? "p-largo" : "p-corto"}">${v[3] > 0 ? "alcista" : "bajista"}</span></td>` +
+    `<td>${dia(v[4])}</td><td class="num">${fmt(v[5])} → ${fmt(v[7])}</td><td>${dia(v[6])}</td><td class="num">${fmt(v[9], 1)} → ${fmt(v[11], 1)}</td><td>${sem[v[13]]}</td><td>${v[0]}</td></tr>`).join("") ||
+    `<tr><td colspan="11" style="color: var(--muted)">Sin divergencias con estos filtros</td></tr>`;
+}
+function clicMedida(tf, g, serie) {
+  return p => {
+    if (!midiendo || !p || p.time == null || !p.point) return;
+    const q = ajustar(tf, p.time, serie.coordinateToPrice(p.point.y));
+    if (!q) return;
+    if (!medida || medida.b || medida.tf !== tf) medida = { tf, a: q, b: null };
+    else medida.b = q;
+    document.getElementById("lectura").innerHTML = textoMedida(); dibujar(); dibujarD();
+  };
+}
+function borrarMedida() { medida = null; document.getElementById("lectura").innerHTML = ""; dibujar(); dibujarD(); }
+
+// los paneles de cada temporalidad se mueven juntos
+function sincronizar(charts, extra) {
+  let ocupado = false;
+  for (const a of charts) a.timeScale().subscribeVisibleLogicalRangeChange(r => {
+    if (ocupado || !r) return; ocupado = true;
+    for (const b of charts) if (b !== a) b.timeScale().setVisibleLogicalRange(r);
+    ocupado = false; if (extra) extra();
+  });
+}
+sincronizar([G.h4p.chart, G.h4o.chart, G.h4q.chart, G.h4a.chart], dibujar);
+sincronizar([G.dp.chart, G.do.chart, G.dq.chart]);
+
+// la cruz de un gráfico se repite, punteada, en los demás: en 4H en la misma vela; en el diario, en el día de esa vela
+const CRUZ = [
+  { g: G.h4p, tf: "4h", serie: () => S.h4vela, valor: i => SER().c[i] },
+  { g: G.h4o, tf: "4h", serie: () => S.h4hist, valor: i => SER().x[i] },
+  { g: G.h4q, tf: "4h", serie: () => S.h4q, valor: i => SER().q[i] },
+  { g: G.h4a, tf: "4h", serie: () => S.h4adx, valor: i => SER().a[i] },
+  { g: G.dp, tf: "d", serie: () => S.dvela, valor: i => DATOS[moneda].diario.c[i] },
+  { g: G.do, tf: "d", serie: () => S.dhist, valor: i => DATOS[moneda].diario.x[i] },
+  { g: G.dq, tf: "d", serie: () => S.dq, valor: i => DATOS[moneda].diario.q[i] },
+];
+let cruzando = false;
+for (const origen of CRUZ) origen.g.chart.subscribeCrosshairMove(p => {
+  if (cruzando) return; cruzando = true;
+  for (const destino of CRUZ) {
+    if (destino === origen) continue;
+    if (!p || p.time == null || !p.point) { destino.g.chart.clearCrosshairPosition(); continue; }
+    const t = destino.tf === origen.tf ? p.time : destino.tf === "d" ? vela(p.time, 86400) + GMT3 : p.time - GMT3;
+    const i = (destino.tf === "4h" ? indice4 : indiceD).get(t);
+    const v = i == null ? null : destino.valor(i);
+    if (v == null) destino.g.chart.clearCrosshairPosition();
+    else destino.g.chart.setCrosshairPosition(v, t, destino.serie());
+  }
+  cruzando = false;
+});
+G.h4p.chart.timeScale().subscribeVisibleLogicalRangeChange(dibujar);
+new ResizeObserver(dibujar).observe(G.h4p.el);
+new ResizeObserver(dibujarD).observe(G.dp.el);
+G.dp.chart.timeScale().subscribeVisibleLogicalRangeChange(dibujarD);
+G.dp.el.addEventListener("wheel", () => dibujarD(), { passive: true });
+G.dp.el.addEventListener("pointermove", () => dibujarD(), { passive: true });
+G.h4p.chart.subscribeClick(clicMedida("4h", G.h4p, S.h4vela));
+G.dp.chart.subscribeClick(clicMedida("d", G.dp, S.dvela));
+document.getElementById("medir").addEventListener("click", () => {
+  midiendo = !midiendo;
+  document.getElementById("medir").setAttribute("aria-pressed", String(midiendo));
+  for (const g of [G.h4p, G.dp]) g.el.classList.toggle("midiendo", midiendo);
+  if (!midiendo) borrarMedida();
+  else document.getElementById("lectura").innerHTML = `Hacé clic en dos velas del gráfico de ${NTF()} o del diario`;
+});
+document.addEventListener("keydown", e => { if (e.key === "Escape" && medida) borrarMedida(); });
+G.h4p.el.addEventListener("wheel", () => dibujar(), { passive: true });
+G.h4p.el.addEventListener("pointermove", () => dibujar(), { passive: true });
+
+for (const b of MONEDAS) document.getElementById("b-" + b).addEventListener("click", async () => {
+  await traerSerie(b); moneda = b; try { localStorage.setItem("div-moneda", b); } catch (e) {} cargar();
+});
+for (const v of VERSIONES) document.getElementById("b-" + v).addEventListener("click", () => {
+  const cambiaTF = es1H(v) !== es1H();
+  version = v; try { localStorage.setItem("div-version", v); } catch (e) {}
+  if (cambiaTF) cargar();
+  else { for (const w of VERSIONES) document.getElementById("b-" + w).setAttribute("aria-pressed", String(w === version)); filtrar(); tabla(); resumen(); }
+});
+for (const id of ["f-reg", "f-ocu", "f-exa", "f-ago", "f-favor", "f-ops"]) document.getElementById(id).addEventListener("change", filtrar);
+for (const id of ["d-reg", "d-ocu", "d-exa", "d-macd", "d-sqz-f", "d-may", "d-otr"]) document.getElementById(id).addEventListener("change", () => { tablaDiaria(); dibujarD(); });
+document.getElementById("tabla-abiertas").addEventListener("click", e => {
+  const tr = e.target.closest("tr[data-k]"); if (tr) irAPosicion(posAbiertas[+tr.dataset.k]);
+});
+document.getElementById("tabla-dd").addEventListener("click", e => {
+  const tr = e.target.closest("tr[data-t]"); if (!tr) return;
+  const i = indiceD.get(+tr.dataset.t); if (i == null) return;
+  G.dp.chart.timeScale().setVisibleLogicalRange({ from: i - 120, to: i + 60 }); G.dp.el.scrollIntoView({ behavior: "smooth", block: "center" });
+});
+
+// cuadro con las reglas de la v1 al pasar el mouse por la flecha de una divergencia
+function textoReglas(v) {
+  const s = v[1], opsMap = new Map(VER().trades.map(t => [t[0], t])), op = opsMap.get(senal(v[10]));
+  const fila = (ok, txt) => `<li><span class="${ok == null ? "na" : ok ? "si" : "no"}">${ok == null ? "·" : ok ? "✓" : "✗"}</span><span>${txt}</span></li>`;
+  const dia = v[11] > 0 ? "alcista" : v[11] < 0 ? "bajista" : "sin dato";
+  const lis = REB[version] ? [fila(null, `diario ${dia}`), fila(null, REB[version])] : v[0] === 3 ? [fila(REGLAS[0][1](v), `diario ${dia}: ${REGLAS[0][1](v) ? "a favor" : "en contra"} de la señal`),
+    fila(null, `lomos del histograma ${fmt(v[15], 0)} % distintos`)] : [
+    fila(REGLAS[0][1](v), `diario ${dia}: ${REGLAS[0][1](v) ? "a favor" : "en contra"} de la señal`),
+    fila(REGLAS[1][1](v), `RSI 14 de ${NTF()} en espejo ${fmt(v[14], 1)} (tiene que ser ${es1H() ? "≤ 62" : "&lt; 45"})`),
+    fila(REGLAS[2][1](v), `picos del histograma ${fmt(v[15], 0)} % distintos (${es1H() ? "entre 9 % y 58 %" : "≥ 30 %"})`),
+    fila(REGLAS[3][1](v), `ADX 14 diario ${fmt(v[16], 1)} (${es1H() ? (v[0] === 2 ? "no se exige en las exageradas" : "≥ 16") : "≥ 20"})`),
+  ];
+  let final; const nd = new Map((VER().descartes || []).map(x => [x[0], x[2]])).get(senal(v[10]));
+  if (v[0] === 3) final = `<span class="na">Divergencia de agotamiento: en estudio, no se opera</span>`;
+  else if (nd != null) final = `<span class="na">Señal generada, pero no se opera: se saltea por ${nd}: estas operaciones no aportan al resultado de la estrategia</span>`;
+  else if (op) final = `<span class="${op[6] > 0 ? "si" : "no"}">${op[7] ? "Operación abierta" : "Operada"}: nocional ${fmt(op[5], op[5] % 1 ? 1 : 0)} USDT · ` +
+    `PnL ${op[6] >= 0 ? "+" : ""}${fmt(op[6])} USDT${op[7] ? " sin cerrar" : ""} · ROI ${roiOp(op) >= 0 ? "+" : ""}${fmt(roiOp(op), 2)} %</span>` +
+    `<ul style="margin-top: 4px">` +
+    `<li><span class="na">·</span><span>entrada ${fmt(op[1])} (${fecha(op[0])})</span></li>` +
+    `<li><span class="na">·</span><span>SL calculado ${fmt(op[9])}${op[10] != null ? ` · ${REB[version] ? "TP" : "TP parcial"} calculado ${fmt(op[10])}` : ""}</span></li>` +
+    (op[10] != null ? `<li><span class="${op[12] != null ? "si" : "na"}">${op[12] != null ? "✓" : "·"}</span><span>${REB[version] ? "TP" : "TP parcial"} ${op[12] != null ? `ejecutado a ${fmt(op[12])}` : "no ejecutado"}</span></li>` : "") +
+    (op[7] ? `<li><span class="na">·</span><span>abierta${op[11] != null ? `; SL vigente ${fmt(op[11])}` : ""}</span></li>`
+           : `<li><span class="na">·</span><span>salida ${fmt(op[3])} por ${op[13]} (${fecha(op[2])})</span></li>`) + `</ul>`;
+  else if (!operable(v)) final = `<span class="na">Las divergencias ${TIPOS[v[0]]}s no se operan en ${version === "sqz" ? "SQZ · 1H" : es1H() ? "la v1 en 1H" : "la v1"}</span>`;
+  else if (cumple(v)) final = `<span class="na">Cumple todo; no operó por el tope de 10 posiciones abiertas</span>`;
+  else final = `<span class="no">No genera señal: ${REGLAS.filter(([, ok]) => !ok(v)).length} regla(s) sin cumplir</span>`;
+  if (es1H() && !op && (v[0] === 0 || v[0] === 2) && v[18] != null) final += `<ul style="margin-top: 4px"><li><span class="na">·</span><span>sin operar: entrada ${fmt(v[17])} · SL ${fmt(v[18])} · TP ref. ${fmt(v[19])}</span></li></ul>`;
+  return `<div class="tip"><h3>${TIPOS[v[0]][0].toUpperCase() + TIPOS[v[0]].slice(1)} ${s > 0 ? "alcista" : "bajista"}</h3>` +
+    `<div class="cuando">señal ${fecha(senal(v[10]))} GMT-3 · precio ${fmt(v[3])} → ${fmt(v[5])}</div>` +
+    `<ul>${lis.join("")}</ul>` +
+    `<div class="final">${final}</div></div>`;
+}
+const tipEl = document.getElementById("tip");
+G.h4p.chart.subscribeCrosshairMove(p => {
+  if (!p || p.time == null || !p.point) { tipEl.hidden = true; return; }
+  const X = SER(), i = indice4.get(p.time);
+  const aca = i == null ? [] : visibles.filter(v => senal(v[10]) === p.time);
+  const cerca = aca.filter(v => {
+    const y = S.h4vela.priceToCoordinate(v[1] > 0 ? X.l[i] : X.h[i]);
+    return y != null && (v[1] > 0 ? p.point.y > y - 6 && p.point.y < y + 42 : p.point.y < y + 6 && p.point.y > y - 42);
+  });
+  if (!cerca.length) { tipEl.hidden = true; return; }
+  tipEl.innerHTML = cerca.map(textoReglas).join(""); tipEl.hidden = false;
+  const w = tipEl.offsetWidth, h = tipEl.offsetHeight, W = G.h4p.el.clientWidth, H = G.h4p.el.clientHeight;
+  tipEl.style.left = Math.min(p.point.x + 14, W - w - 60) + "px";
+  tipEl.style.top = Math.max(4, Math.min(p.point.y + 14, H - h - 4)) + "px";
+});
+G.h4p.el.addEventListener("pointerleave", () => { tipEl.hidden = true; });
+
+function tema() { colores(); cargar(); }
+window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", tema);
+new MutationObserver(tema).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+const C_IND = ["ind", "Indicador", ["MACD", "SQZ"]], C_TF = ["tf", "Temporalidad", ["1H", "4H", "1D"]], C_M = ["m", "Moneda", MONEDAS], C_L = ["lado", "Lado", ["largo", "corto"]];
+barra("abiertas", [C_IND, C_TF, C_M, C_L], posiciones);
+barra("nops", [C_IND, C_M, C_L, ["tipo", "Tipo", ["regular", "exagerada"]]], noOperadas);
+barra("ops", [C_IND, C_TF, C_M, C_L, ["res", "Resultado", ["ganadoras", "perdedoras"]], ["anio", "Año", ["2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025", "2026"]]], tablaOps);
+// con la página abierta: cuando hay datos nuevos los trae y redibuja sin perder el zoom; si estabas viendo el final, sigue en el final
+let actualizando = false;
+async function actualizar() {
+  if (actualizando) return;
+  actualizando = true;
+  try {
+    const v = await versionWeb();
+    if (v === VER_WEB) return;
+    const antes = VER_WEB; VER_WEB = v;
+    try {
+      const nuevo = await traerJson("comun"); for (const D of Object.values(nuevo)) horaComun(D);
+      for (const m of MONEDAS) { const s = await traerJson(m); horaSerie(s); Object.assign(nuevo[m], s); }
+      const r4 = G.h4p.chart.timeScale().getVisibleLogicalRange(), rd = G.dp.chart.timeScale().getVisibleLogicalRange();
+      const n4 = SER().t.length, nd = DATOS[moneda].diario.t.length;
+      DATOS = nuevo; cargar();
+      const corre = (r, n, m) => r && r.to >= n - 1 ? { from: r.from + m - n, to: r.to + m - n } : r;
+      const a = corre(r4, n4, SER().t.length), b = corre(rd, nd, DATOS[moneda].diario.t.length);
+      if (a) G.h4p.chart.timeScale().setVisibleLogicalRange(a);
+      if (b) G.dp.chart.timeScale().setVisibleLogicalRange(b);
+    } catch (e) { VER_WEB = antes; throw e; }
+  } catch (e) { console.warn("sin actualizar", e); } finally { actualizando = false; }
+}
+(async () => {
+  try {
+    if (WEB) {
+      document.getElementById("sub").textContent = "Cargando datos…";
+      VER_WEB = await versionWeb();
+      DATOS = await traerJson("comun"); for (const D of Object.values(DATOS)) horaComun(D);
+      await traerSerie(moneda);
+    } else for (const D of Object.values(DATOS)) { horaComun(D); horaSerie(D); }
+    colores(); cargar();
+    if (WEB) {
+      for (const m of MONEDAS) if (m !== moneda) traerSerie(m);
+      setInterval(actualizar, 60000);
+      document.addEventListener("visibilitychange", () => { if (!document.hidden) actualizar(); });
+    }
+  } catch (e) { document.getElementById("sub").textContent = "No se pudieron cargar los datos"; console.error(e); }
+})();
+</script>
+</body></html>
